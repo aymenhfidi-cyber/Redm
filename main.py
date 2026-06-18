@@ -20,7 +20,7 @@ def load_db():
             "codes": {},      
             "winners": [],    
             "users": [],
-            "usernames": {}  # لتخزين خريطة (اليوزر نيم ➔ الآيدي)
+            "usernames": {}  
         }
         with open(DB_FILE, 'w', encoding='utf-8') as f:
             json.dump(default_data, f, ensure_ascii=False, indent=4)
@@ -54,7 +54,6 @@ def resolve_user_id(input_text, db):
     else:
         try:
             uid = int(text)
-            # محاولة إيجاد اليوزر نيم التابع للآيدي إذا كان مسجلاً
             name = f"`{uid}`"
             for u, i in db.get("usernames", {}).items():
                 if i == uid:
@@ -104,7 +103,6 @@ def start_cmd(message):
     user_id = message.from_user.id
     username = message.from_user.username
     
-    # حفظ وتحديث بيانات المستخدم فورا لتمكين البحث باليوزر نيم
     if username:
         db["usernames"][username.lower()] = user_id
     if user_id not in db["users"]:
@@ -133,6 +131,8 @@ def callback_handler(call):
         bot.answer_callback_query(call.id, "❌ Unauthorized Access.", show_alert=True)
         return
 
+    # [إصلاح] تصفير عجلة التحميل فوراً لكل الأزرار لمنع التعليق
+    bot.answer_callback_query(call.id)
     db = load_db()
 
     if call.data == "btn_create_code":
@@ -152,10 +152,16 @@ def callback_handler(call):
         bot.register_next_step_handler(msg, process_delete_code)
 
     elif call.data == "btn_winners":
+        # [إصلاح زر الفائزين] حماية الرسالة من الانكسار بسبب علامات الأندرسكور فاليوزرات
         text = "🏆 *No winners recorded yet.*" if not db["winners"] else "🏆 *List of All Winners:*\n\n" + "\n".join(db["winners"])
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("🔙 Back to Dashboard", callback_data="btn_refresh_panel"))
-        bot.edit_message_text(text, chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="Markdown", reply_markup=markup)
+        try:
+            bot.edit_message_text(text, chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="Markdown", reply_markup=markup)
+        except Exception:
+            # حل بديل نقي في حال فشل الـ Markdown
+            clean_text = text.replace("*", "").replace("`", "")
+            bot.edit_message_text(clean_text, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup)
 
     elif call.data == "btn_prizes":
         if not db["codes"]:
@@ -196,8 +202,12 @@ def callback_handler(call):
         bot.register_next_step_handler(msg, process_remove_admin)
 
     elif call.data in ["btn_refresh_panel"]:
-        text, markup = get_owner_panel()
-        bot.edit_message_text(text, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup, parse_mode="Markdown")
+        # [إصلاح زر الـ Refresh] منع توقف البوت أو إظهار خطأ إذا لم تتغير الإحصائيات
+        try:
+            text, markup = get_owner_panel()
+            bot.edit_message_text(text, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup, parse_mode="Markdown")
+        except Exception:
+            pass
 
 # ── معالجة البيانات المدخلة خطوة بخطوة ─────────────────────────────
 
@@ -316,7 +326,6 @@ def handle_text_messages(message):
     user_id = message.from_user.id
     username = message.from_user.username
     
-    # تحديث مستمر لليوزرات المتفاعلة مع البوت
     if username:
         db["usernames"][username.lower()] = user_id
         save_db(db)
@@ -340,7 +349,6 @@ def handle_text_messages(message):
             parse_mode="Markdown"
         )
         
-        # إشعار كلا المالكين فوراً بالفوز
         for owner_id in OWNER_IDS:
             try:
                 bot.send_message(

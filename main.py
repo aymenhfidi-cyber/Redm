@@ -11,7 +11,7 @@ OWNER_IDS = [7367073412, 6676819684]
 bot = telebot.TeleBot(BOT_TOKEN)
 DB_FILE = "database.json"
 
-# تحميل قاعدة البيانات مع دعم نظام اليوزرات الجديد
+# تحميل قاعدة البيانات بأمان
 def load_db():
     if not os.path.exists(DB_FILE):
         default_data = {
@@ -42,7 +42,7 @@ def is_admin(user_id):
     db = load_db()
     return user_id in OWNER_IDS or user_id in db["admins"]
 
-# دالة ذكية لتحويل اليوزر نيم أو النص إلى آيدي رقمي صحيح
+# تحويل اليوزر نيم أو النص إلى آيدي رقمي صحيح
 def resolve_user_id(input_text, db):
     text = input_text.strip()
     if text.startswith('@'):
@@ -54,7 +54,7 @@ def resolve_user_id(input_text, db):
     else:
         try:
             uid = int(text)
-            name = f"`{uid}`"
+            name = f"<code>{uid}</code>"
             for u, i in db.get("usernames", {}).items():
                 if i == uid:
                     name = f"@{u}"
@@ -63,19 +63,19 @@ def resolve_user_id(input_text, db):
         except ValueError:
             return None, "invalid"
 
-# اللوحة الاحترافية مع الإيموجيات وتنسيق الخطوط العريض والمائل
+# لوحة التحكم الاحترافية بنظام HTML المستقر
 def get_owner_panel():
     db = load_db()
     stats_text = (
-        "👑 *SYSTEM DASHBOARD*\n"
+        "👑 <b>SYSTEM DASHBOARD</b>\n"
         "‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾\n"
-        "📊 *Current Statistics:*\n"
-        f" ├ 🎁 Active Codes: `{len(db['codes'])}`\n"
-        f" ├ 🏆 Total Winners: `{len(db['winners'])}`\n"
-        f" ├ 👥 Total Users: `{len(db['users'])}`\n"
-        f" └ 🚫 Banned Users: `{len(db['banned'])}`\n"
+        "📊 <b>Current Statistics:</b>\n"
+        f" ├ 🎁 Active Codes: <code>{len(db['codes'])}</code>\n"
+        f" ├ 🏆 Total Winners: <code>{len(db['winners'])}</code>\n"
+        f" ├ 👥 Total Users: <code>{len(db['users'])}</code>\n"
+        f" └ 🚫 Banned Users: <code>{len(db['banned'])}</code>\n"
         "________________________\n"
-        " _Select an action from the menu below:_"
+        " <i>Select an action from the menu below:</i>"
     )
     
     markup = types.InlineKeyboardMarkup(row_width=2)
@@ -96,7 +96,7 @@ def get_owner_panel():
     
     return stats_text, markup
 
-# أمر البدء /start
+# أمر التشغيل /start
 @bot.message_handler(commands=['start'])
 def start_cmd(message):
     db = load_db()
@@ -110,20 +110,20 @@ def start_cmd(message):
     save_db(db)
     
     if user_id in db["banned"]:
-        bot.reply_to(message, "🚫 *Access Denied:* You are permanently banned from this bot.", parse_mode="Markdown")
+        bot.reply_to(message, "🚫 <b>Access Denied:</b> You are permanently banned from this bot.", parse_mode="HTML")
         return
 
     if is_admin(user_id):
         text, markup = get_owner_panel()
-        bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
+        bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode="HTML")
     else:
         bot.send_message(
             message.chat.id, 
-            "👋 *Welcome!*\n\nPlease send the correct *Secret Code* to claim your prize instantly.",
-            parse_mode="Markdown"
+            "👋 <b>Welcome!</b>\n\nPlease send the correct <b>Secret Code</b> to claim your prize instantly.",
+            parse_mode="HTML"
         )
 
-# معالجة الضغط على الأزرار تفاعلياً
+# معالجة الضغط التفاعلي على الأزرار ومنع التعليق
 @bot.callback_query_handler(func=lambda call: True)
 def callback_handler(call):
     user_id = call.from_user.id
@@ -131,59 +131,62 @@ def callback_handler(call):
         bot.answer_callback_query(call.id, "❌ Unauthorized Access.", show_alert=True)
         return
 
-    # [إصلاح] تصفير عجلة التحميل فوراً لكل الأزرار لمنع التعليق
-    bot.answer_callback_query(call.id)
     db = load_db()
 
     if call.data == "btn_create_code":
+        bot.answer_callback_query(call.id)
         msg = bot.edit_message_text(
-            "📝 *Create New Reward*\n\nSend the code and prize using this format:\n`CODE REWARD_TEXT`\n\n_Example: VIP2026 Premium Account_\n\nType `/cancel` to abort.",
+            "📝 <b>Create New Reward</b>\n\nSend the code and prize using this format:\n<code>CODE REWARD_TEXT</code>\n\n<i>Example: VIP2026 Premium Account</i>\n\nType <code>/cancel</code> to abort.",
             chat_id=call.message.chat.id,
             message_id=call.message.message_id,
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         bot.register_next_step_handler(msg, process_create_code)
 
     elif call.data == "btn_delete_code":
+        bot.answer_callback_query(call.id)
         if not db["codes"]:
             bot.answer_callback_query(call.id, "There are no active codes available to delete.", show_alert=True)
             return
-        msg = bot.edit_message_text("🗑 *Delete Code*\n\nSend the exact code you want to remove from the system:\n\nType `/cancel` to abort.", chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="Markdown")
+        msg = bot.edit_message_text("🗑 <b>Delete Code</b>\n\nSend the exact code you want to remove from the system:\n\nType <code>/cancel</code> to abort.", chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="HTML")
         bot.register_next_step_handler(msg, process_delete_code)
 
     elif call.data == "btn_winners":
-        # [إصلاح زر الفائزين] حماية الرسالة من الانكسار بسبب علامات الأندرسكور فاليوزرات
-        text = "🏆 *No winners recorded yet.*" if not db["winners"] else "🏆 *List of All Winners:*\n\n" + "\n".join(db["winners"])
+        # حل مشكلة قائمة الفائزين نهائياً عبر إنهاء عجلة التحميل فوراً وعرض النص الآمن
+        bot.answer_callback_query(call.id)
+        text = "🏆 <b>No winners recorded yet.</b>" if not db["winners"] else "🏆 <b>List of All Winners:</b>\n\n" + "\n".join(db["winners"])
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("🔙 Back to Dashboard", callback_data="btn_refresh_panel"))
         try:
-            bot.edit_message_text(text, chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="Markdown", reply_markup=markup)
+            bot.edit_message_text(text, chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="HTML", reply_markup=markup)
         except Exception:
-            # حل بديل نقي في حال فشل الـ Markdown
-            clean_text = text.replace("*", "").replace("`", "")
-            bot.edit_message_text(clean_text, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup)
+            bot.edit_message_text("🏆 <b>Winners List (Safe Mode):</b>\n\n" + "\n".join(db["winners"]), chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup)
 
     elif call.data == "btn_prizes":
+        bot.answer_callback_query(call.id)
         if not db["codes"]:
-            text = "🎁 *No active prizes available at the moment.*"
+            text = "🎁 <b>No active prizes available at the moment.</b>"
         else:
-            text = "🎁 *Active Codes & Prizes:*\n\n"
+            text = "🎁 <b>Active Codes & Prizes:</b>\n\n"
             for code, prize in db["codes"].items():
-                text += f" • `{code}` ➔ _{prize}_\n"
+                text += f" • <code>{code}</code> ➔ <i>{prize}</i>\n"
         
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("🔙 Back to Dashboard", callback_data="btn_refresh_panel"))
-        bot.edit_message_text(text, chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="Markdown", reply_markup=markup)
+        bot.edit_message_text(text, chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="HTML", reply_markup=markup)
 
     elif call.data == "btn_ban":
-        msg = bot.edit_message_text("🚫 *Ban Management*\n\nSend the Telegram *@Username* or *User ID* you want to block:\n\nType `/cancel` to abort.", chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="Markdown")
+        bot.answer_callback_query(call.id)
+        msg = bot.edit_message_text("🚫 <b>Ban Management</b>\n\nSend the Telegram <b>@Username</b> or <b>User ID</b> you want to block:\n\nType <code>/cancel</code> to abort.", chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="HTML")
         bot.register_next_step_handler(msg, process_ban_user)
 
     elif call.data == "btn_unban":
-        msg = bot.edit_message_text("✅ *Ban Management*\n\nSend the Telegram *@Username* or *User ID* you want to unban:\n\nType `/cancel` to abort.", chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="Markdown")
+        bot.answer_callback_query(call.id)
+        msg = bot.edit_message_text("✅ <b>Ban Management</b>\n\nSend the Telegram <b>@Username</b> or <b>User ID</b> you want to unban:\n\nType <code>/cancel</code> to abort.", chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="HTML")
         bot.register_next_step_handler(msg, process_unban_user)
 
     elif call.data == "btn_manage_admins":
+        bot.answer_callback_query(call.id)
         if user_id not in OWNER_IDS:
             bot.answer_callback_query(call.id, "❌ Access Restricted to Primary Owners.", show_alert=True)
             return
@@ -191,23 +194,29 @@ def callback_handler(call):
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("➕ Add Admin", callback_data="admin_add"), types.InlineKeyboardButton("➖ Remove Admin", callback_data="admin_remove"))
         markup.add(types.InlineKeyboardButton("🔙 Back to Dashboard", callback_data="btn_refresh_panel"))
-        bot.edit_message_text("👥 *Admin Management*\n\nSelect an action configuration from below:", chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="Markdown", reply_markup=markup)
+        bot.edit_message_text("👥 <b>Admin Management</b>\n\nSelect an action configuration from below:", chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="HTML", reply_markup=markup)
 
     elif call.data == "admin_add":
-        msg = bot.edit_message_text("➕ *Promote User*\n\nSend the Telegram *@Username* or *User ID* to add as an Admin:\n\nType `/cancel` to abort.", chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="Markdown")
+        bot.answer_callback_query(call.id)
+        msg = bot.edit_message_text("➕ <b>Promote User</b>\n\nSend the Telegram <b>@Username</b> or <b>User ID</b> to add as an Admin:\n\nType <code>/cancel</code> to abort.", chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="HTML")
         bot.register_next_step_handler(msg, process_add_admin)
 
     elif call.data == "admin_remove":
-        msg = bot.edit_message_text("➖ *Demote User*\n\nSend the Telegram *@Username* or *User ID* to remove from Admins:\n\nType `/cancel` to abort.", chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="Markdown")
+        bot.answer_callback_query(call.id)
+        msg = bot.edit_message_text("➖ <b>Demote User</b>\n\nSend the Telegram <b>@Username</b> or <b>User ID</b> to remove from Admins:\n\nType <code>/cancel</code> to abort.", chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="HTML")
         bot.register_next_step_handler(msg, process_remove_admin)
 
     elif call.data in ["btn_refresh_panel"]:
-        # [إصلاح زر الـ Refresh] منع توقف البوت أو إظهار خطأ إذا لم تتغير الإحصائيات
+        # حل مشكلة تعليق زر الـ Refresh نهائياً عبر إرسال إشعار علوي للمستخدم يوضح حالة التحديث
         try:
             text, markup = get_owner_panel()
-            bot.edit_message_text(text, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup, parse_mode="Markdown")
-        except Exception:
-            pass
+            bot.edit_message_text(text, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup, parse_mode="HTML")
+            bot.answer_callback_query(call.id, text="🔄 Dashboard updated!", show_alert=False)
+        except telebot.apihelper.ApiTelegramException as e:
+            if "message is not modified" in e.description.lower():
+                bot.answer_callback_query(call.id, text="🔄 Dashboard is already up-to-date!", show_alert=False)
+            else:
+                bot.answer_callback_query(call.id, text="⚠️ Refresh Error.", show_alert=True)
 
 # ── معالجة البيانات المدخلة خطوة بخطوة ─────────────────────────────
 
@@ -218,17 +227,17 @@ def process_create_code(message):
         try:
             parts = message.text.split(' ', 1)
             if len(parts) < 2:
-                bot.reply_to(message, "❌ *Syntax Error:* Please write the code, then a space, followed by the prize content.", parse_mode="Markdown")
+                bot.reply_to(message, "❌ <b>Syntax Error:</b> Please write the code, then a space, followed by the prize content.", parse_mode="HTML")
                 return
             code, prize = parts[0], parts[1]
             db = load_db()
             db["codes"][code] = prize
             save_db(db)
-            bot.send_message(message.chat.id, f"✅ *Success:* New item configuration saved.\n🔑 Code: `{code}`\n🎁 Prize: _{prize}_", parse_mode="Markdown")
+            bot.send_message(message.chat.id, f"✅ <b>Success:</b> New item configuration saved.\n🔑 Code: <code>{code}</code>\n🎁 Prize: <i>{prize}</i>", parse_mode="HTML")
         except:
             bot.reply_to(message, "An unexpected error occurred.")
     text, markup = get_owner_panel()
-    bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
+    bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode="HTML")
 
 def process_delete_code(message):
     if message.text == '/cancel': 
@@ -239,11 +248,11 @@ def process_delete_code(message):
         if code in db["codes"]:
             del db["codes"][code]
             save_db(db)
-            bot.send_message(message.chat.id, f"🗑 *Deleted:* Code `{code}` was wiped successfully.", parse_mode="Markdown")
+            bot.send_message(message.chat.id, f"🗑 <b>Deleted:</b> Code <code>{code}</code> was wiped successfully.", parse_mode="HTML")
         else:
-            bot.send_message(message.chat.id, "❌ *Error:* Code not found in the active pool.")
+            bot.send_message(message.chat.id, "❌ <b>Error:</b> Code not found in the active pool.")
     text, markup = get_owner_panel()
-    bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
+    bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode="HTML")
 
 def process_ban_user(message):
     if message.text == '/cancel': 
@@ -255,13 +264,13 @@ def process_ban_user(message):
             if target_id not in db["banned"]:
                 db["banned"].append(target_id)
                 save_db(db)
-                bot.send_message(message.chat.id, f"🚫 *Banned:* User {name} restricted permanently.", parse_mode="Markdown")
+                bot.send_message(message.chat.id, f"🚫 <b>Banned:</b> User {name} restricted permanently.", parse_mode="HTML")
             else:
                 bot.send_message(message.chat.id, f"This user {name} is already banned.")
         else:
-            bot.send_message(message.chat.id, "❌ *Error:* Username not found or input format is invalid. User must start the bot first.")
+            bot.send_message(message.chat.id, "❌ <b>Error:</b> Username not found. User must start the bot first.")
     text, markup = get_owner_panel()
-    bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
+    bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode="HTML")
 
 def process_unban_user(message):
     if message.text == '/cancel': 
@@ -273,13 +282,13 @@ def process_unban_user(message):
             if target_id in db["banned"]:
                 db["banned"].remove(target_id)
                 save_db(db)
-                bot.send_message(message.chat.id, f"✅ *Restored:* User {name} unbanned successfully.", parse_mode="Markdown")
+                bot.send_message(message.chat.id, f"✅ <b>Restored:</b> User {name} unbanned successfully.", parse_mode="HTML")
             else:
                 bot.send_message(message.chat.id, f"Target user {name} is not currently banned.")
         else:
-            bot.send_message(message.chat.id, "❌ *Error:* Username not found or input format is invalid.")
+            bot.send_message(message.chat.id, "❌ <b>Error:</b> Username not found or input format is invalid.")
     text, markup = get_owner_panel()
-    bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
+    bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode="HTML")
 
 def process_add_admin(message):
     if message.text == '/cancel': 
@@ -291,13 +300,13 @@ def process_add_admin(message):
             if target_id not in db["admins"]:
                 db["admins"].append(target_id)
                 save_db(db)
-                bot.send_message(message.chat.id, f"👥 *Promotion:* User {name} granted Admin permissions.", parse_mode="Markdown")
+                bot.send_message(message.chat.id, f"👥 <b>Promotion:</b> User {name} granted Admin permissions.", parse_mode="HTML")
             else:
                 bot.send_message(message.chat.id, f"This user {name} is already an Admin.")
         else:
-            bot.send_message(message.chat.id, "❌ *Error:* Username not found. User must start the bot first.")
+            bot.send_message(message.chat.id, "❌ <b>Error:</b> Username not found. User must start the bot first.")
     text, markup = get_owner_panel()
-    bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
+    bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode="HTML")
 
 def process_remove_admin(message):
     if message.text == '/cancel': 
@@ -309,13 +318,13 @@ def process_remove_admin(message):
             if target_id in db["admins"]:
                 db["admins"].remove(target_id)
                 save_db(db)
-                bot.send_message(message.chat.id, f"➖ *Demotion:* Admin permissions revoked for {name}.", parse_mode="Markdown")
+                bot.send_message(message.chat.id, f"➖ <b>Demotion:</b> Admin permissions revoked for {name}.", parse_mode="HTML")
             else:
                 bot.send_message(message.chat.id, f"This user {name} is not an Admin.")
         else:
-            bot.send_message(message.chat.id, "❌ *Error:* Username not found or input invalid.")
+            bot.send_message(message.chat.id, "❌ <b>Error:</b> Username not found or input invalid.")
     text, markup = get_owner_panel()
-    bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
+    bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode="HTML")
 
 
 # ── فحص رسائل المستخدمين ومطابقة الأكواد ──────────────────────────
@@ -339,29 +348,30 @@ def handle_text_messages(message):
         prize = db["codes"][incoming_text]
         user_mention = f"@{username}" if username else str(user_id)
         
-        db["winners"].append(f" • {user_mention} ➔ Code: `{incoming_text}`")
+        # حفظ الفائز بصيغة HTML آمنة ومقاومة للعلامات الغريبة
+        db["winners"].append(f" • {user_mention} ➔ Code: <code>{incoming_text}</code>")
         del db["codes"][incoming_text]  
         save_db(db)
         
         bot.reply_to(
             message, 
-            f"🎉 *Congratulations! You found a valid code!* 🎉\n\n🔑 Code: `{incoming_text}`\n🎁 Your Reward: *{prize}*",
-            parse_mode="Markdown"
+            f"🎉 <b>Congratulations! You found a valid code!</b> 🎉\n\n🔑 Code: <code>{incoming_text}</code>\n🎁 Your Reward: <b>{prize}</b>",
+            parse_mode="HTML"
         )
         
         for owner_id in OWNER_IDS:
             try:
                 bot.send_message(
                     owner_id,
-                    f"🔔 *New Key Claimed!*\n\n👤 Winner: {user_mention} (`{user_id}`)\n🔑 Code: `{incoming_text}`\n🎁 Reward Sent: *{prize}*",
-                    parse_mode="Markdown"
+                    f"🔔 <b>New Key Claimed!</b>\n\n👤 Winner: {user_mention} (<code>{user_id}</code>)\n🔑 Code: <code>{incoming_text}</code>\n🎁 Reward Sent: <b>{prize}</b>",
+                    parse_mode="HTML"
                 )
             except:
                 pass
     else:
         if not is_admin(user_id):
-            bot.reply_to(message, "❌ *Invalid Code:* That answer is incorrect or has already been claimed.", parse_mode="Markdown")
+            bot.reply_to(message, "❌ <b>Invalid Code:</b> That answer is incorrect or has already been claimed.", parse_mode="HTML")
 
 # إقلاع البوت
-print("Dashboard system engine initialized with multi-input username resolution...")
+print("Dashboard system engine initialized smoothly in HTML mode...")
 bot.infinity_polling()

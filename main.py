@@ -4,8 +4,8 @@ import json
 import os
 
 # ── ⚙️ CONFIGURATION (Your Settings Configured) ───────────────────
-BOT_TOKEN = "8660388819:AAHDNVSOCT5h7Ggn7lNXxPFi5lnPQgiEvGc"  
-OWNER_IDS = [7367073412, 6676819684]  
+BOT_TOKEN = "8603010807:AAG2NITIY4CwDZDzDvtZ1c1W7E7rVcor5Qg"  
+OWNER_IDS = [7826341576, 6676819684]  
 # ──────────────────────────────────────────────────────────────────
 
 bot = telebot.TeleBot(BOT_TOKEN)

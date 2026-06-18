@@ -5,7 +5,7 @@ import os
 
 # ── ⚙️ CONFIGURATION (Your Settings Configured) ───────────────────
 BOT_TOKEN = "8603010807:AAG2NITIY4CwDZDzDvtZ1c1W7E7rVcor5Qg"  
-OWNER_IDS = [7826341576, 6676819684]  
+OWNER_IDS = [7826341576, 7966430609]  
 # ──────────────────────────────────────────────────────────────────
 
 bot = telebot.TeleBot(BOT_TOKEN)
